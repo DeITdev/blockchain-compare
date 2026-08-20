@@ -1,0 +1,235 @@
+name: blockchain-besu-ibft
+
+services:
+  # Bootstrap/Bootnode (Node-1)
+  node-1:
+    container_name: ibft-node-1
+    image: hyperledger/besu:develop
+    volumes:
+      - ../genesis.json:/opt/besu/genesis.json
+      - ../Node-1/data:/opt/besu/data
+    ports:
+      - "8545:8545"
+    networks:
+      besu-network:
+        ipv4_address: 172.16.239.11
+    command: >
+      --data-path=/opt/besu/data
+      --genesis-file=/opt/besu/genesis.json
+      --rpc-http-enabled=true
+      --rpc-http-api=ETH,NET,IBFT,WEB3,DEBUG,ADMIN,TXPOOL
+      --host-allowlist="*"
+      --rpc-http-cors-origins="all"
+      --profile=ENTERPRISE
+      --revert-reason-enabled=true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ls", "/opt/besu/data"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Node-2
+  node-2:
+    container_name: ibft-node-2
+    image: hyperledger/besu:develop
+    depends_on:
+      node-1:
+        condition: service_healthy
+    volumes:
+      - ../genesis.json:/opt/besu/genesis.json
+      - ../Node-2/data:/opt/besu/data
+    ports:
+      - "8546:8546"
+    networks:
+      besu-network:
+        ipv4_address: 172.16.239.12
+    command: >
+      --data-path=/opt/besu/data
+      --genesis-file=/opt/besu/genesis.json
+      --bootnodes=enode://8fbfa5c13e0913f9bfbbf8a08ecc90ca7c13bc9d33a86e5e9b6aae814f1b501195977fbedac8f94bd4cf4bf90fceb9966572c03dcde7e170110c6a6be78d2048@172.16.239.11:30303
+      --p2p-port=30304
+      --rpc-http-enabled=true
+      --rpc-http-api=ETH,NET,IBFT,WEB3,DEBUG,ADMIN,TXPOOL
+      --host-allowlist="*"
+      --rpc-http-cors-origins="all"
+      --rpc-http-port=8546
+      --profile=ENTERPRISE
+      --revert-reason-enabled=true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ls", "/opt/besu/data"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Node-3
+  node-3:
+    container_name: ibft-node-3
+    image: hyperledger/besu:develop
+    depends_on:
+      node-1:
+        condition: service_healthy
+    volumes:
+      - ../genesis.json:/opt/besu/genesis.json
+      - ../Node-3/data:/opt/besu/data
+    ports:
+      - "8547:8547"
+    networks:
+      besu-network:
+        ipv4_address: 172.16.239.13
+    command: >
+      --data-path=/opt/besu/data
+      --genesis-file=/opt/besu/genesis.json
+      --bootnodes=enode://8fbfa5c13e0913f9bfbbf8a08ecc90ca7c13bc9d33a86e5e9b6aae814f1b501195977fbedac8f94bd4cf4bf90fceb9966572c03dcde7e170110c6a6be78d2048@172.16.239.11:30303
+      --p2p-port=30305
+      --rpc-http-enabled=true
+      --rpc-http-api=ETH,NET,IBFT,WEB3,DEBUG,ADMIN,TXPOOL
+      --host-allowlist="*"
+      --rpc-http-cors-origins="all"
+      --rpc-http-port=8547
+      --profile=ENTERPRISE
+      --revert-reason-enabled=true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ls", "/opt/besu/data"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Node-4
+  node-4:
+    container_name: ibft-node-4
+    image: hyperledger/besu:develop
+    depends_on:
+      node-1:
+        condition: service_healthy
+    volumes:
+      - ../genesis.json:/opt/besu/genesis.json
+      - ../Node-4/data:/opt/besu/data
+    ports:
+      - "8548:8548"
+    networks:
+      besu-network:
+        ipv4_address: 172.16.239.14
+    command: >
+      --data-path=/opt/besu/data
+      --genesis-file=/opt/besu/genesis.json
+      --bootnodes=enode://8fbfa5c13e0913f9bfbbf8a08ecc90ca7c13bc9d33a86e5e9b6aae814f1b501195977fbedac8f94bd4cf4bf90fceb9966572c03dcde7e170110c6a6be78d2048@172.16.239.11:30303
+      --p2p-port=30306
+      --rpc-http-enabled=true
+      --rpc-http-api=ETH,NET,IBFT,WEB3,DEBUG,ADMIN,TXPOOL
+      --host-allowlist="*"
+      --rpc-http-cors-origins="all"
+      --rpc-http-port=8548
+      --profile=ENTERPRISE
+      --revert-reason-enabled=true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ls", "/opt/besu/data"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Chainlens Blockchain Explorer
+  chainlens-mongodb:
+    container_name: ibft-chainlens-mongodb
+    image: mongo:5.0.8
+    entrypoint: mongod --bind_ip "0.0.0.0"
+    networks:
+      besu-network:
+        ipv4_address: 172.16.239.16
+    restart: unless-stopped
+
+  chainlens-redis:
+    container_name: ibft-chainlens-redis
+    image: redis
+    networks:
+      besu-network:
+        ipv4_address: 172.16.239.17
+    restart: unless-stopped
+
+  chainlens-api:
+    container_name: ibft-chainlens-api
+    image: web3labs/epirus-free-api:latest
+    depends_on:
+      chainlens-mongodb:
+        condition: service_started
+      chainlens-redis:
+        condition: service_started
+    environment:
+      - NODE_ENDPOINT=http://172.16.239.11:8545
+      - MONGO_CLIENT_URI=mongodb://chainlens-mongodb:27017
+      - REINDEX_ENDPOINT=http://chainlens-ingestion/reindex/
+      - MONGO_DB_NAME=epirus
+      - MONGO_CREATE_INDICES=true
+      - REDIS_HOST=chainlens-redis
+      - REDIS_PORT=6379
+    networks:
+      besu-network:
+        ipv4_address: 172.16.239.18
+    restart: unless-stopped
+
+  chainlens-web:
+    container_name: ibft-chainlens-web
+    image: web3labs/epirus-free-web:latest
+    depends_on:
+      chainlens-api:
+        condition: service_started
+    environment:
+      - API_URL=/api
+      - WS_API_URL=ws://localhost:8090
+      - DISPLAY_NETWORK_TAB=disabled
+    networks:
+      besu-network:
+        ipv4_address: 172.16.239.19
+    restart: unless-stopped
+
+  chainlens-ingestion:
+    container_name: ibft-chainlens-ingestion
+    image: web3labs/epirus-free-ingestion:latest
+    depends_on:
+      node-1:
+        condition: service_healthy
+      chainlens-mongodb:
+        condition: service_started
+      chainlens-redis:
+        condition: service_started
+    environment:
+      - NODE_ENDPOINT=http://172.16.239.11:8545
+      - MONGO_CLIENT_URI=mongodb://chainlens-mongodb:27017
+      - MONGO_DB_NAME=epirus
+      - LIST_OF_METRICS_TO_CALCULATE_PER_MINUTE=hourly,daily,monthly,yearly
+    networks:
+      besu-network:
+        ipv4_address: 172.16.239.20
+    restart: unless-stopped
+
+  chainlens-nginx:
+    container_name: ibft-chainlens-nginx
+    image: nginx:latest
+    depends_on:
+      chainlens-api:
+        condition: service_started
+      chainlens-web:
+        condition: service_started
+    ports:
+      - "8081:80"
+    volumes:
+      - ./chainlens/nginx.conf:/etc/nginx/nginx.conf
+      - ./chainlens/5xx.html:/www/error_pages/5xx.html
+    networks:
+      besu-network:
+        ipv4_address: 172.16.239.21
+    restart: unless-stopped
+
+networks:
+  besu-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.239.0/24

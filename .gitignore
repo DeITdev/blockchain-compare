@@ -1,0 +1,31 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# env
+.env*.local
+.env
+.venv/
+
+# IDE
+.idea
+.vscode/*
+!.vscode/extensions.json
+.cursor/
+.agents/
+
+# OS
+.DS_Store
+
+# temporary working files
+.tmp_*
+
+# repos references
+repo/
