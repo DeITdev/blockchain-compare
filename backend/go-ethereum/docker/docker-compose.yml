@@ -1,0 +1,148 @@
+name: blockchain-geth-dev
+
+services:
+  geth-dev:
+    container_name: geth-dev
+    image: ethereum/client-go:stable
+    volumes:
+      - ../data:/root/.ethereum
+    ports:
+      - "8555:8555"
+    networks:
+      geth-network:
+        ipv4_address: 172.16.240.11
+    command: >
+      --dev
+      --dev.period=2
+      --datadir=/root/.ethereum
+      --http
+      --http.addr=0.0.0.0
+      --http.port=8555
+      --http.api=eth,net,web3,admin,debug,txpool
+      --http.corsdomain="*"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "geth attach --exec 'eth.blockNumber' http://127.0.0.1:8555 2>/dev/null | grep -qE '[0-9]+'",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  chainlens-mongodb:
+    container_name: geth-chainlens-mongodb
+    image: mongo:5.0.8
+    entrypoint: mongod --bind_ip "0.0.0.0"
+    volumes:
+      - geth-chainlens-mongodb-data:/data/db
+    networks:
+      geth-network:
+        ipv4_address: 172.16.240.16
+    restart: unless-stopped
+
+  chainlens-redis:
+    container_name: geth-chainlens-redis
+    image: redis
+    networks:
+      geth-network:
+        ipv4_address: 172.16.240.17
+    restart: unless-stopped
+
+  chainlens-api:
+    container_name: geth-chainlens-api
+    image: web3labs/epirus-free-api:latest
+    depends_on:
+      chainlens-mongodb:
+        condition: service_started
+      chainlens-redis:
+        condition: service_started
+    ports:
+      - "8090:8090"
+    environment:
+      - NODE_ENDPOINT=http://172.16.240.11:8555
+      - MONGO_CLIENT_URI=mongodb://chainlens-mongodb:27017
+      - REINDEX_ENDPOINT=http://chainlens-ingestion/reindex/
+      - MONGO_DB_NAME=epirus
+      - MONGO_CREATE_INDICES=true
+      - REDIS_HOST=chainlens-redis
+      - REDIS_PORT=6379
+    networks:
+      geth-network:
+        ipv4_address: 172.16.240.18
+    restart: unless-stopped
+
+  chainlens-web:
+    container_name: geth-chainlens-web
+    image: web3labs/epirus-free-web:latest
+    depends_on:
+      chainlens-api:
+        condition: service_started
+    environment:
+      - API_URL=/api
+      - WS_API_URL=ws://localhost:8090
+      - DISPLAY_NETWORK_TAB=disabled
+    networks:
+      geth-network:
+        ipv4_address: 172.16.240.19
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://127.0.0.1:3000/dashboard 2>/dev/null | grep -q Chainlens",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 120s
+
+  chainlens-ingestion:
+    container_name: geth-chainlens-ingestion
+    image: web3labs/epirus-free-ingestion:latest
+    depends_on:
+      geth-dev:
+        condition: service_healthy
+      chainlens-mongodb:
+        condition: service_started
+      chainlens-redis:
+        condition: service_started
+    environment:
+      - NODE_ENDPOINT=http://172.16.240.11:8555
+      - MONGO_CLIENT_URI=mongodb://chainlens-mongodb:27017
+      - MONGO_DB_NAME=epirus
+      - LIST_OF_METRICS_TO_CALCULATE_PER_MINUTE=hourly,daily,monthly,yearly
+    networks:
+      geth-network:
+        ipv4_address: 172.16.240.20
+    restart: unless-stopped
+
+  chainlens-nginx:
+    container_name: geth-chainlens-nginx
+    image: nginx:latest
+    depends_on:
+      chainlens-api:
+        condition: service_started
+      chainlens-web:
+        condition: service_healthy
+    ports:
+      - "8082:80"
+    volumes:
+      - ./chainlens/nginx.conf:/etc/nginx/nginx.conf
+      - ./chainlens/5xx.html:/www/error_pages/5xx.html
+    networks:
+      geth-network:
+        ipv4_address: 172.16.240.21
+    restart: unless-stopped
+
+networks:
+  geth-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.240.0/24
+
+volumes:
+  geth-chainlens-mongodb-data:

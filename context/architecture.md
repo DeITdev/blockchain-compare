@@ -199,7 +199,7 @@ Primary dev OS: **Windows 10**. Cross-platform rules:
 | Backend | Setup approach |
 |---------|---------------|
 | **Besu** | Done: IBFT genesis chain ID 1337, 4 nodes, Docker Compose + Chainlens on 8081 |
-| **Geth** | Docker `ethereum/client-go`; target Clique multi-node for fair EVM comparison; `--dev` as smoke-test fallback; RPC on 8555, Chainlens on 8082 |
+| **Geth** | Done (config): Docker `ethereum/client-go:stable` in `--dev` mode (single node, Geth v1.14+); RPC on 8555, Chainlens on 8082; multi-node via Kurtosis PoS deferred |
 | **Fabric** | `fabric-samples/test-network`: `network.sh up createChannel -ca`, `deployCC`; chaincode mirrors envelope fields; Explorer on 8090 |
 | **Sepolia** | No Docker node; `.env` with public RPC URL, chain ID 11155111, funded test wallet; Hardhat `sepolia` network entry |
 

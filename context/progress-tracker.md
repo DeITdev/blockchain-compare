@@ -4,14 +4,14 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-**Phase 0 — Context definition and scaffold**
+**Phase 1 — Backend setup (Geth + Fabric)**
 
-Besu backend is copied and runnable. API, app, Geth, Fabric, and Sepolia are placeholders. Context files defined.
+Besu backend is runnable. Geth dev-mode Docker + Chainlens config scaffolded. Fabric and API remain next.
 
 ## Current Goal
 
-- Context files finalized (this task).
-- Next: get Geth and Fabric backends running (Docker + command docs).
+- Geth config complete — user validates with `docker compose up`.
+- Next: Fabric backend (Docker + command docs).
 
 ---
 
@@ -20,6 +20,7 @@ Besu backend is copied and runnable. API, app, Geth, Fabric, and Sepolia are pla
 ### Backend infrastructure
 
 - **Hyperledger Besu IBFT** — 4-node network under `backend/hyperledger-besu/` with genesis, node keys, Docker Compose (4 validators + Chainlens on `:8081`), run guide, and reset script.
+- **Go Ethereum (Geth) dev mode** — single-node `--dev` stack under `backend/go-ethereum/` with Docker Compose (Geth on `:8555` + Chainlens on `:8082`), `command/run-geth.md`, and `reset-geth.sh`. Clique deprecated in Geth v1.14+; topology asymmetry vs Besu 4-node IBFT documented intentionally.
 
 ### Project scaffold
 
@@ -47,19 +48,18 @@ Besu backend is copied and runnable. API, app, Geth, Fabric, and Sepolia are pla
 
 Ordered by user priority — **setup first**, benchmarks and Sepolia deferred:
 
-1. **`backend/go-ethereum/`** — Docker network (target Clique multi-node; `--dev` as smoke fallback), Chainlens on `:8082`, RPC on `:8555`, `command/run-geth.md`.
-2. **`backend/hyperledger-fabric/`** — test-network wrapper, chaincode skeleton, Hyperledger Explorer on `:8090`, `command/run-fabric.md`.
-3. **Port API from reference** — `server-blockchain-api.js` + Hardhat + contracts + `deploy-besu.js`; extend for Geth.
-4. **Port LamTeknik sample into `app/`** — minimal subset (one entity first).
-5. *(deferred)* **`backend/sepolia-testnet/`** — RPC-only `.env.example` + `command/run-sepolia.md`.
-6. *(deferred)* **Performance benchmark harness** — shared payload, per-chain timing report.
-7. *(follow-up)* **Root `README.md`** — single entry point with startup order per backend.
+1. **`backend/hyperledger-fabric/`** — test-network wrapper, chaincode skeleton, Hyperledger Explorer on `:8090`, `command/run-fabric.md`.
+2. **Port API from reference** — `server-blockchain-api.js` + Hardhat + contracts + `deploy-besu.js`; extend for Geth.
+3. **Port LamTeknik sample into `app/`** — minimal subset (one entity first).
+4. *(deferred)* **`backend/sepolia-testnet/`** — RPC-only `.env.example` + `command/run-sepolia.md`.
+5. *(deferred)* **Performance benchmark harness** — shared payload, per-chain timing report.
+6. *(follow-up)* **Root `README.md`** — single entry point with startup order per backend.
+7. *(optional future)* **Geth multi-node via Kurtosis PoS** — official modern path; not in Phase 1 scope.
 
 ---
 
 ## Open Questions
 
-- Geth: `--dev` single node vs multi-node Clique/PoA for fair comparison with Besu 4-node IBFT?
 - Fabric chaincode location: `backend/hyperledger-fabric/chaincode/` vs `API/fabric/`?
 - Fabric v1 integration: chaincode deploy + CLI invoke only, or Fabric SDK in API from day one?
 - *(deferred)* Benchmark output format: JSON vs CSV vs console table?
@@ -84,6 +84,7 @@ Ordered by user priority — **setup first**, benchmarks and Sepolia deferred:
 | Monitoring | Each backend owns its explorer stack — not shared |
 | Besu monitoring | Chainlens bundled in existing compose (8081) |
 | Geth monitoring | Own Chainlens copy with separate MongoDB volume (8082) |
+| Geth consensus | `--dev` single node (Geth v1.14+); Clique deprecated; Kurtosis PoS multi-node deferred |
 | Fabric monitoring | Hyperledger Explorer (8090) — Chainlens is EVM-only |
 | Windows dev | Docker Compose preferred; WSL/Git Bash for `.sh` scripts |
 
@@ -95,5 +96,8 @@ Ordered by user priority — **setup first**, benchmarks and Sepolia deferred:
 - Besu RPC default: `http://localhost:8545`, chain ID `1337`.
 - Besu deployer (dev): address `0xfe3b557e8fb62b89f4916b721be55ceb828dbd73`, key in genesis alloc — see reference `API/.env.example`.
 - Chainlens UI (Besu): `http://localhost:8081`.
+- Geth RPC default: `http://localhost:8555`, chain ID `1337` (`--dev` mode).
+- Chainlens UI (Geth): **http://127.0.0.1:8082** (use `127.0.0.1`, not `localhost`, to avoid cookie clash with Besu :8081).
+- Geth runbook: `backend/go-ethereum/command/run-geth.md`.
 - Smart contract algorithm spec: `backend/hyperledger-besu/note.txt`.
 - New clones need `repo/lamteknik-blockchain/` obtained manually — it is gitignored.
